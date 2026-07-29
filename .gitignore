@@ -1,0 +1,25 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Office temp / lock files ---
+# Word/Excel создают ~$-файлы, пока документ открыт (в т.ч. при сборке PDF).
+# Их коммитить нельзя — это мусор и потенциальные метаданные.
+~$*
+*.tmp
+
+# --- Local secrets: NEVER commit ---
+# Реальные токены (JWT x-auth-token, bot_token) живут только локально в Postman/.env
+# и подставляются в переменные коллекции api/*.postman_collection.json на машине.
+*.env
+*.env.*
+!.env.example
+postman/*_local.json
+postman/*_local.postman_environment.json
+*_secrets.*
