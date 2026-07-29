@@ -1,0 +1,95 @@
+{
+  "info": {
+    "name": "ChatPlace · Keyword Bot · Contract Checks",
+    "description": "Контрактные проверки функции «чат-бот на кодовое слово» (Telegram).\n\nНазначение: независимая верификация рассинхрона между Telegram Bot API и ChatPlace, лежащего в основе BUG-01.\n- Запрос 1 (ChatPlace): GET /telegram-channels — что видит продукт.\n- Запрос 2 (Telegram): getChatMember — что видит платформа напрямую.\nКонтраст результатов (Telegram = administrator, ChatPlace = data:[]) = воспроизводимое доказательство дефекта.\n\nПРАВИЛО БЕЗОПАСНОСТИ: все секреты вынесены в переменные и оставлены ПУСТЫМИ. Реальные значения подставляются локально в Postman (Collection Variables / Environment) и НЕ коммитятся в репозиторий.\n\nКандидат: Самойлов Всеволод · 30.07.2026.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "BUG-01 verification",
+      "item": [
+        {
+          "name": "ChatPlace · GET telegram-channels (что видит продукт)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-auth-token", "value": "{{auth_token}}", "description": "JWT авторизации; подставляется локально, НЕ коммитить" },
+              { "key": "accept", "value": "application/json, text/plain, */*" },
+              { "key": "lang", "value": "ru" }
+            ],
+            "url": {
+              "raw": "https://api.chatplace.io/projects/{{project_id}}/bots/{{bot_id}}/telegram-channels",
+              "protocol": "https",
+              "host": ["api", "chatplace", "io"],
+              "path": ["projects", "{{project_id}}", "bots", "{{bot_id}}", "telegram-channels"]
+            },
+            "description": "Эндпоинт, который фронт дёргает после клика «Бот добавлен». При BUG-01 возвращает 200 OK с телом {type:result, data:[]} несмотря на подтверждённое админство бота."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Контрактный + регрессионный автотест по BUG-01",
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Контракт: тело имеет type=result', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('type', 'result');",
+                  "});",
+                  "pm.test('BUG-01 regression: привязанный канал возвращается (data не пуст)', function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body.data, 'при боте-админе ожидаем непустой массив каналов').to.be.an('array').that.is.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Telegram · getChatMember (независимая верификация админства)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "https://api.telegram.org/bot{{bot_token}}/getChatMember?chat_id={{channel_chat_id}}&user_id={{bot_user_id}}",
+              "protocol": "https",
+              "host": ["api", "telegram", "org"],
+              "path": ["bot{{bot_token}}", "getChatMember"],
+              "query": [
+                { "key": "chat_id", "value": "{{channel_chat_id}}" },
+                { "key": "user_id", "value": "{{bot_user_id}}" }
+              ]
+            },
+            "description": "Прямой запрос к Telegram Bot API: является ли бот админом/владельцем канала. Возвращает result.status = administrator при реальном админстве — в контраст с пустым data:[] от ChatPlace."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Независимое подтверждение админства бота со стороны Telegram",
+                  "pm.test('Telegram ok=true', function () { pm.expect(pm.response.json().ok).to.eql(true); });",
+                  "pm.test('Бот реально админ/владелец канала', function () {",
+                  "    var status = pm.response.json().result.status;",
+                  "    pm.expect(['administrator', 'creator'], 'контраст с пустым data:[] от ChatPlace = суть BUG-01').to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "auth_token", "value": "", "type": "string", "description": "JWT x-auth-token; только локально" },
+    { "key": "project_id", "value": "", "type": "string" },
+    { "key": "bot_id", "value": "", "type": "string" },
+    { "key": "bot_token", "value": "", "type": "string", "description": "Токен от @BotFather; только локально" },
+    { "key": "bot_user_id", "value": "", "type": "string", "description": "Числовой id бота (для getChatMember)" },
+    { "key": "channel_chat_id", "value": "", "type": "string", "description": "chat_id канала (обычно -100...)" }
+  ]
+}
