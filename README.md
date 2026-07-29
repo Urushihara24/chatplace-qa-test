@@ -14,11 +14,11 @@ paywall → ввод токена → привязка бота-админа к 
 | Файл / папка | Роль | Читать |
 |---|---|---|
 | `docs/TEST_REPORT.md` | Narrative-отчёт + решение о релизе (Go/No-Go) | первым |
-| `test-artifacts/TEST_MATRIX.xlsx` | Реестр: AC, кейсы, дефекты, наблюдения, риски | данные и traceability |
+| `test-artifacts/TEST_MATRIX.md` | Реестр: AC, кейсы, дефекты, наблюдения, риски | данные и traceability |
 | `api/*.postman_collection.json` | Контрактные проверки (ChatPlace API + Telegram Bot API) | пакет артефактов |
 | `evidence/` | Скриншоты-доказательства + легенда (`evidence/README.md`) | приложение к дефектам |
 
-## Листы `TEST_MATRIX.xlsx`
+## Листы `TEST_MATRIX.md`
 1. `AC_Traceability` — критерии приёмки ↔ тест-кейсы.
 2. `Test_Cases` — чек-лист со статусами Pass / Fail / Blocked.
 3. `Defect_Register` — баг-репорты (severity, шаги, RCA-гипотеза, evidence).
