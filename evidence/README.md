@@ -14,9 +14,10 @@
 
 | Файл | Привязка | Что показывает | Как воспроизвести | Зачищено |
 |---|---|---|---|---|
-| `bug01_empty_channels.png` | BUG-01, TC-06, TC-09, AC-3/AC-4 | DevTools → Network: `GET /telegram-channels` = `200 OK`, тело `{type:"result", data:[]}` при подтверждённом админстве бота | F12 → Network → клик «Бот добавлен» → выбрать запрос `telegram-channels` → вкладка Response | `x-auth-token`, `project_id`, `bot_id` |
-| `bug01_bot_is_admin.png` | BUG-01 (контраст) | Telegram → канал → Администраторы: бот `TestCalc` со статусом «админ». Доказывает, что пустой массив от ChatPlace — не вина пользователя | Telegram → канал → название → Администраторы | ничего (публичные данные канала) |
-| `obs01_stripe_console.png` | OBS-01, TC-17, AC-8 | DevTools → Console: `Unsupported 'PaymentOptions' field: saveCard/debug/sbpSupport` + deprecated `allowpaymentrequest` на экране оплаты | F12 → Console → открыть экран оплаты/подписки | `pk_live_…` |
+| `bug01_empty_channels.png` | BUG-01, TC-06, AC-3 | DevTools → Network → `GET /telegram-channels`: вкладка General/Headers — путь запроса и `Status Code 200 OK` | F12 → Network → клик «Бот добавлен» → запрос `telegram-channels` → Headers | `X-Auth-Token` оставлен вне кадра |
+| `bug01_empty_response.png` | BUG-01, TC-06, TC-09, AC-3/AC-4 | Вкладка Response/Preview того же запроса: тело `{type:"result", data:[]}` — пустой массив при подтверждённом админстве | тот же запрос → вкладка Response | не требуется (секретов нет) |
+| `bug01_bot_is_admin.png` | BUG-01 (контраст) | Telegram → канал → Администраторы: `TestCalc — админ`. Доказывает, что пустой массив — не вина пользователя | Telegram → канал → название → Администраторы | не требуется |
+| `obs01_stripe_console.png` | OBS-01, TC-17, AC-8 | DevTools → Console: `Unsupported 'PaymentOptions' field: saveCard/debug/sbpSupport` + deprecated `allowpaymentrequest` | F12 → Console → экран оплаты/подписки | `pk_live_…` |
 
 ## Как читать контраст по BUG-01
 Два первых скрина работают **в паре**: `bug01_bot_is_admin.png` доказывает, что на стороне
