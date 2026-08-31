@@ -4,6 +4,12 @@
 **AI при подготовке:** Qwen (структурирование и формулировки; scope, приоритизация,
 Risk Matrix и Go/No-Go — собственные решения).
 
+| Product risk | QA approach | Decision |
+|---|---|---|
+| Paid Telegram-bot onboarding and content delivery | AC traceability, API checks, risk matrix, defect evidence and RCA hypotheses | **NO-GO** because the paid onboarding path is blocked |
+
+**Start here:** [test report](docs/TEST_REPORT.md) · [test matrix](test-artifacts/TEST_MATRIX.md) · [evidence index](evidence/README.md)
+
 ## Что проверял
 Платный flow создания чат-бота на кодовое слово в Telegram:
 paywall → ввод токена → привязка бота-админа к каналу → настройка триггера → выдача материала.
