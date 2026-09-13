@@ -1,8 +1,14 @@
-# QA Test Assignment · ChatPlace · «Чат-бот на кодовое слово» (Telegram)
+# QA Test Assignment · ChatPlace · “Keyword Chatbot” (Telegram)
 
-**Кандидат:** Самойлов Всеволод · **Позиция:** QA Engineer · **Дата:** 30.07.2026
-**AI при подготовке:** Qwen (структурирование и формулировки; scope, приоритизация,
-Risk Matrix и Go/No-Go — собственные решения).
+**Candidate:** Vsevolod Samoylov · **Position:** QA Engineer · **Date:** 30.07.2026  
+**AI used during preparation:** Qwen for structure and wording; scope, prioritization, Risk Matrix, and Go/No-Go decisions were my own.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Telegram-Bot_API-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram">
+  <img src="https://img.shields.io/badge/Postman-FF6C37?style=for-the-badge&logo=postman&logoColor=white" alt="Postman">
+  <img src="https://img.shields.io/badge/OpenAPI-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white" alt="OpenAPI">
+  <img src="https://img.shields.io/badge/Chrome_DevTools-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome DevTools">
+</p>
 
 | Product risk | QA approach | Decision |
 |---|---|---|
@@ -10,50 +16,41 @@ Risk Matrix и Go/No-Go — собственные решения).
 
 **Start here:** [test report](docs/TEST_REPORT.md) · [test matrix](test-artifacts/TEST_MATRIX.md) · [evidence index](evidence/README.md)
 
-## Что проверял
-Платный flow создания чат-бота на кодовое слово в Telegram:
-paywall → ввод токена → привязка бота-админа к каналу → настройка триггера → выдача материала.
-Проверка велась с позиции gatekeeper релиза: цель — не «прокликать счастливый путь»,
-а принять решение о готовности к продакшену.
+## What I tested
+The paid flow for creating a keyword-triggered Telegram chatbot:
+paywall → token input → bot-admin channel binding → trigger setup → content delivery.
 
-## Как читать репозиторий
-| Файл / папка | Роль | Читать |
+Testing was performed from a release-gatekeeper perspective. The goal was not to click through a happy path, but to make an evidence-based production-readiness decision.
+
+## How to read the repository
+| File / folder | Purpose | Recommended order |
 |---|---|---|
-| `docs/TEST_REPORT.md` | Narrative-отчёт + решение о релизе (Go/No-Go) | первым |
-| `test-artifacts/TEST_MATRIX.md` | Реестр: AC, кейсы, дефекты, наблюдения, риски | данные и traceability |
-| `api/*.postman_collection.json` | Контрактные проверки (ChatPlace API + Telegram Bot API) | пакет артефактов |
-| `evidence/` | Скриншоты-доказательства + легенда (`evidence/README.md`) | приложение к дефектам |
+| `docs/TEST_REPORT.md` | Narrative report + Go/No-Go release decision | first |
+| `test-artifacts/TEST_MATRIX.md` | Registry of AC, cases, defects, observations, and risks | data and traceability |
+| `api/*.postman_collection.json` | Contract checks for ChatPlace API + Telegram Bot API | artifact package |
+| `evidence/` | Supporting screenshots and evidence legend (`evidence/README.md`) | defect attachments |
 
-## Листы `TEST_MATRIX.md`
-1. `AC_Traceability` — критерии приёмки ↔ тест-кейсы.
-2. `Test_Cases` — чек-лист со статусами Pass / Fail / Blocked.
-3. `Defect_Register` — баг-репорты (severity, шаги, RCA-гипотеза, evidence).
-4. `Observations` — техдолг / некритичные находки.
-5. `Risk_Matrix` — вероятность × импакт по каждому AC (risk-based приоритизация).
+## `TEST_MATRIX.md` sections
+1. `AC_Traceability` — acceptance criteria ↔ test cases.
+2. `Test_Cases` — checklist with Pass / Fail / Blocked statuses.
+3. `Defect_Register` — bug reports with severity, steps, RCA hypothesis, and evidence.
+4. `Observations` — technical debt and non-critical findings.
+5. `Risk_Matrix` — probability × impact for each AC, used for risk-based prioritization.
 
 ## Traceability
-AC ↔ Test_Cases ↔ Defect_Register ↔ Risk_Matrix ↔ evidence связаны по ID
-(`AC-xx`, `TC-xx`, `BUG-xx` / `OBS-xx`). Это даёт сквозную прослеживаемость
-от требования до доказательства — как в TMS (Allure TestOps / Zephyr).
+AC ↔ Test_Cases ↔ Defect_Register ↔ Risk_Matrix ↔ evidence are connected by IDs (`AC-xx`, `TC-xx`, `BUG-xx` / `OBS-xx`). This provides end-to-end traceability from requirement to evidence, similar to a TMS workflow in Allure TestOps or Zephyr.
 
-## Статус релиза
-**NO-GO.** Блокирующий дефект `BUG-01` на платном онбординге:
-`GET /telegram-channels` возвращает `200 OK` с пустым массивом при подтверждённом
-админстве бота, UI блокирует переход без feedback. Подробности — `docs/TEST_REPORT.md`, раздел 6.
+## Release status
+**NO-GO.** Blocking defect `BUG-01` affects paid onboarding: `GET /telegram-channels` returns `200 OK` with an empty array even when the bot is confirmed as a channel administrator, while the UI blocks progress without feedback. Details are in section 6 of `docs/TEST_REPORT.md`.
 
-## Подход (коротко)
-1. **Shift-left** — ревью контракта API↔UI до UI-проверок.
-2. **Risk-based** — фокус на платном онбординге (самая дорогая точка воронки).
-3. **Runtime** — логика «кодовое слово → выдача материала».
-4. **RCA** — цикл по 5 Whys: гипотеза «мёртв сервис синхронизации» снята действием
-   (сервис поднят, бот пингуется) → точка сбоя сместилась на контракт API↔UI / запись в БД.
-5. **Границы ответственности** — разделено, на что влияем (ChatPlace) и на что нет
-   (Telegram Bot API, действия пользователя).
+## Approach — short version
+1. **Shift-left** — review API↔UI contracts before UI execution.
+2. **Risk-based testing** — focus on paid onboarding, the most expensive point in the funnel.
+3. **Runtime validation** — verify the “keyword → content delivery” behavior.
+4. **RCA** — use a 5 Whys loop: the “dead sync service” hypothesis was disproved by action, and the failure point moved to API↔UI contract / database binding.
+5. **Responsibility boundaries** — separate what belongs to ChatPlace from Telegram Bot API and user-side dependencies.
 
-> Execution шагов 2–3 на стенде **заблокирован** дефектом `BUG-01`; кейсы для них
-> спроектированы по логике продукта (статус теста — *Blocked*, не *Not done*):
-> проектирование по требованиям не зависит от доступности стенда.
+> Execution of steps 2–3 on the environment was **blocked** by `BUG-01`. The related cases were still designed from product requirements and correctly marked *Blocked*, not *Not done*: test design does not depend on environment availability.
 
-## Инструменты
-Postman · Swagger/OpenAPI · DevTools (Network/Console) · Charles Proxy · Kibana ·
-Telegram + @BotFather · Jira · Allure TestOps · GitLab CI.
+## Tools
+Postman · Swagger/OpenAPI · DevTools (Network/Console) · Charles Proxy · Kibana · Telegram + @BotFather · Jira · Allure TestOps · GitLab CI.
