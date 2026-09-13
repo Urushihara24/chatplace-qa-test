@@ -1,52 +1,60 @@
-# ТЕСТОВЫЙ ОТЧЁТ / RELEASE READINESS REPORT
+# TEST REPORT / RELEASE READINESS REPORT
 
-**Функция:** Чат-бот на кодовое слово (Telegram) · ChatPlace.io
-**Кандидат:** Самойлов Всеволод · **Дата:** 30.07.2026 · **Версия отчёта:** 1.1
-**AI при подготовке:** Qwen (структурирование и формулировки; scope, приоритизация, Risk Matrix и Go/No-Go — собственные решения).
-**Полный реестр (AC ↔ кейсы ↔ дефекты ↔ риски):** `test-artifacts/` данного репозитория.
+**Feature:** Keyword Chatbot (Telegram) · ChatPlace.io  
+**Candidate:** Vsevolod Samoylov · **Date:** 30.07.2026 · **Report version:** 1.1  
+**AI used during preparation:** Qwen for structure and wording; scope, prioritization, Risk Matrix, and Go/No-Go decisions were my own.  
+**Full registry (AC ↔ cases ↔ defects ↔ risks):** `test-artifacts/` in this repository.
 
-## 0. Ход мыслей (подход)
-Проверка велась с позиции gatekeeper релиза, а не «прокликать счастливый путь». Порядок: фиксирую границы ответственности и контракт API↔UI → risk-based проверки платного онбординга и оплаты (самые дорогие точки воронки) → runtime-логика «кодовое слово → выдача». Применяю shift-left (ревью контракта до UI-проверок) и RCA по 5 Whys для локализации точки сбоя в цепочке, с итеративной проверкой гипотез действием. Traceability AC ↔ кейсы ↔ дефекты ↔ evidence выдержана по ID, как в TMS (Allure TestOps / Zephyr).
+## 0. Reasoning approach
+Testing was performed from a release-gatekeeper perspective rather than as a simple happy-path walkthrough. The order was: define responsibility boundaries and the API↔UI contract → run risk-based checks around paid onboarding and payment, the most expensive funnel points → validate runtime behavior for “keyword → content delivery”. Shift-left was applied by reviewing the contract before UI execution. RCA used a 5 Whys loop to localize the failure point in the service chain, with hypotheses tested iteratively through direct actions. Traceability from AC ↔ cases ↔ defects ↔ evidence was maintained by ID, similar to a TMS workflow such as Allure TestOps or Zephyr.
 
-> Execution шагов 2–3 на стенде **заблокирован** дефектом BUG-01; кейсы для них спроектированы по логике продукта (статус — *Blocked*, не *Not done*): проектирование по требованиям не зависит от доступности стенда.
+> Execution of steps 2–3 on the environment was **blocked** by `BUG-01`. The relevant cases were designed from product logic and correctly marked *Blocked*, not *Not done*: test design does not depend on environment availability.
 
-## 1. Scope и границы ответственности
-- **Влияем (ChatPlace):** paywall, валидация токена, онбординг, UI-feedback, запись привязки в БД, здоровье сервиса синхронизации + алертинг, обработка ответов внешних провайдеров и HTTP-код, возвращаемый клиенту.
-- **Не влияем (Telegram Bot API):** возврат «бот — админ канала», доставка сообщений, rate-limit (30 msg/s, 4096 символов).
-- **Не влияем (внешний платёжный провайдер):** decline / таймаут со стороны CloudPayments — штатное внешнее событие. **Влияем (наш бэк):** обработка ответа провайдера и код, возвращаемый клиенту с `api.chatplace.io` (500 при ожидаемом decline = дефект нашего адаптера/контракта, а не провайдера).
-- **Не влияем (внешняя аналитика):** ошибки WebSocket Яндекс.Метрики (`wss://mc.yandex.com`) — вне зоны продукта, релиз не блокируют; отфильтрованы как шум.
-- **Не влияем (пользователь):** выданные боту права, факт подписки/блока, баланс карты — но можем подсказать в UI.
+## 1. Scope and responsibility boundaries
+- **Within our control (ChatPlace):** paywall, token validation, onboarding, UI feedback, storing the binding in the database, sync-service health and alerting, handling external-provider responses, and the HTTP status returned to the client.
+- **Outside our control (Telegram Bot API):** whether Telegram reports the bot as a channel administrator, message delivery, and platform rate limits such as 30 msg/s and 4096 characters.
+- **Outside our control (external payment provider):** provider-side decline or timeout is an expected external event. **Within our control:** how our backend maps that provider response and which status is returned from `api.chatplace.io`; a 500 for an expected decline is a defect in our adapter/contract, not in the provider.
+- **Outside our control (external analytics):** Yandex Metrica WebSocket errors (`wss://mc.yandex.com`) are outside the product boundary and do not block release; they are filtered as noise.
+- **Outside our control (user actions):** permissions granted to the bot, subscription/block state, and card balance. The product can still provide clear guidance in the UI.
 
 ## 2. Acceptance Criteria
-- **AC-1 — Доступ gated подпиской + создание подписки.** Без тарифа — paywall; с тарифом — шаг открыт; decline оплаты обработан как 4xx, без 5xx.
-- **AC-2 — Привязка по токену.** Валидный токен → статус «Подключено» ≤ 3 с; невалидный/отозванный → понятная ошибка, бот не создаётся.
-- **AC-3 — Синхронизация «бот = админ».** `GET /bots/{id}/telegram-channels` возвращает канал при подтверждённом админстве.
-- **AC-4 — Онбординг проходится.** Переход 1→2→3 без зависаний; при пустом/ошибочном ответе — empty/error-state + кнопка «Повторить».
-- **AC-5 — Кодовое слово.** Сохраняется, валидируется (пустое/дубли/регистр), срабатывает в заданном контексте (личка/комменты).
-- **AC-6 — Выдача материала.** Подписчик получает материал ≤ 5 с после триггера; формат (текст/файл/ссылка) отображается корректно.
-- **AC-7 — Обработка исключений.** Нет «тишины» в UI: любой неуспех = feedback + следующий шаг для пользователя.
-- **AC-8 — Тех. гигиена платных экранов.** В консоли нет ошибок/варнингов SDK; платёжные опции применяются (соответствие Definition of Done).
+- **AC-1 — Subscription-gated access and subscription creation.** Without a plan the user sees a paywall; with a plan the step is accessible; a payment decline is handled as 4xx without 5xx.
+- **AC-2 — Token-based binding.** A valid token produces a “Connected” state within ≤ 3 s; an invalid or revoked token produces a clear error and does not create the bot.
+- **AC-3 — Bot-admin synchronization.** `GET /bots/{id}/telegram-channels` returns the channel when the bot is confirmed as an administrator.
+- **AC-4 — Onboarding can be completed.** Transition 1→2→3 works without hanging; empty/error responses produce an empty/error state with a “Retry” action.
+- **AC-5 — Keyword behavior.** The keyword is saved, validated for empty values, duplicates, and case, and triggers in the defined context such as direct messages or comments.
+- **AC-6 — Content delivery.** A subscriber receives the content within ≤ 5 s after the trigger; text/file/link formats render correctly.
+- **AC-7 — Exception handling.** There is no silent failure in the UI: every unsuccessful state provides feedback and a next action.
+- **AC-8 — Technical hygiene on paid screens.** The console contains no SDK errors/warnings and payment options are applied according to the Definition of Done.
 
-## 3. Чек-лист (сжатый; полный реестр из 18 кейсов — в `test-artifacts/`)
-- **Подключение (AC-1, AC-2):** платный доступ открыт только с подпиской · валидный токен привязывает бота · невалидный/пустой/отозванный токен отклоняется с понятным текстом · есть видимый путь заменить/удалить токен.
-- **Онбординг и синхронизация (AC-3, AC-4, AC-7):** после «Бот добавлен» `telegram-channels` возвращает непустой массив при реальном админстве · при `data:[]` UI показывает empty-state с подсказкой и retry, а не молчит · кнопка «Бот добавлен» не пропускает дальше без факта привязки · переход 1→2→3 возможен штатно.
-- **Runtime (AC-5, AC-6):** кодовое слово срабатывает на точное совпадение · граничные значения: регистр, пробелы, спецсимволы, unicode/emoji · повторный триггер ведёт себя по спецификации · материал доставляется ≤ 5 с · текст > 4096 символов блокируется на уровне UI до отправки.
-- **Негатив / интеграция (AC-1, AC-3, AC-7):** decline оплаты (нет средств / неверный CVC) → бэк 4xx с кодом, без 500 и мислида в UI · токен отозван после привязки → graceful error, нет 5xx · Telegram API недоступен (эмуляция Charles Proxy) → retry, без потери данных · rate-limit при массовом триггере → очередь, нет падения сервиса.
-- **Тех. гигиена (AC-8):** Network — контракт `telegram-channels` соответствует схеме; Console на оплате без `Unsupported PaymentOptions` и deprecated-атрибутов.
+## 3. Checklist — condensed
+The full registry contains 18 cases in `test-artifacts/`.
 
-## 4. Подход к тестированию
-Shift-left: ревью требований и API-контракта до UI. API: Postman-коллекция на эндпоинты привязки/синхронизации + прямые вызовы Telegram Bot API (`getChatMember`) для независимой верификации админства. E2E: реальный Telegram-аккаунт, триггер → проверка выдачи. Негатив: эмуляция таймаутов/429 через Charles Proxy; decline оплаты на карте без средств как штатный негативный сценарий. Локализация дефектов: Kibana-логи + статус сервиса синхронизации, RCA по 5 Whys с итеративной проверкой гипотез действием (определение точки сбоя в сервисной цепочке). Обязательный пакет артефактов на дефект: шаги + ожидаемо/факт + логи/скрины (evidence). Security: перед публикацией evidence зачищены секреты (JWT `x-auth-token`, Stripe `pk_live`) — соответствие security-чеклисту (data in transit / secrets). Регресс: прогон чек-листа на staging перед релизом.
+- **Connection (AC-1, AC-2):** paid access opens only with a subscription · a valid token binds the bot · invalid/empty/revoked tokens are rejected with clear text · there is a visible way to replace or remove the token.
+- **Onboarding and synchronization (AC-3, AC-4, AC-7):** after “Bot added”, `telegram-channels` returns a non-empty array when the bot is actually an administrator · when `data:[]`, the UI shows an empty state with guidance and retry instead of remaining silent · “Bot added” does not allow progression without an actual binding · transition 1→2→3 can be completed normally.
+- **Runtime (AC-5, AC-6):** keyword triggers on exact match · boundaries include case, spaces, special characters, Unicode/emoji · repeated trigger behavior matches the specification · content is delivered within ≤ 5 s · text above 4096 characters is blocked in the UI before submission.
+- **Negative / integration (AC-1, AC-3, AC-7):** payment decline such as insufficient funds or invalid CVC returns backend 4xx with a typed code, without 500 or misleading UI · token revoked after binding produces a graceful error and no 5xx · Telegram API unavailability emulated through Charles Proxy produces retry behavior without data loss · rate limiting during mass triggers is queued rather than crashing the service.
+- **Technical hygiene (AC-8):** Network response for `telegram-channels` matches the contract; payment-page Console does not contain `Unsupported PaymentOptions` or deprecated-attribute warnings.
 
-## 5. Инструменты
+## 4. Testing approach
+Shift-left: requirements and API contract reviewed before UI checks. API: Postman collection for binding/synchronization endpoints plus direct Telegram Bot API calls such as `getChatMember` to independently verify administrator status. E2E: real Telegram account, trigger, then content-delivery verification. Negative testing: timeouts/429 emulated with Charles Proxy; insufficient-funds card used as a normal payment-decline scenario. Defect localization: Kibana logs plus sync-service state, with RCA through 5 Whys and iterative hypothesis validation to isolate the failing layer in the service chain. Required defect evidence package: steps + Expected/Actual + logs/screenshots. Security: secrets such as JWT `x-auth-token` and Stripe `pk_live` were removed from evidence before publication in line with the security checklist. Regression: checklist execution on staging before release.
+
+## 5. Tools
 Postman · Swagger/OpenAPI · DevTools (Network/Console) · Charles Proxy · Kibana · Telegram + @BotFather · Jira · Allure TestOps · GitLab CI.
 
-## 6. Найденные дефекты (детали и RCA — в реестре)
-- **BUG-01 [Critical].** Онбординг не проходится: `200 OK` + `{type:"result", data:[]}` при валидном боте-админе; UI блокирует шаг без feedback. RCA (5 Whys): гипотеза «мёртв сервис синхронизации» **снята действием** (контейнер поднят, бот пингуется — дефект воспроизводится) → точка сбоя сместилась на контракт API↔UI / отсутствие записи привязки в БД (бэк не опрашивает Telegram Bot API о реальном админстве).
-- **BUG-02 [Medium].** Нет видимого механизма замены/удаления токена после привязки — пользователь с ошибочным токеном застревает.
-- **BUG-03 [High].** Decline оплаты: бизнес-слой отработал корректно (тело `{type:"error", data:{code:0, message:…, level:"business"}}` — decline определён и message сформирован), но HTTP-маппинг вернул `500` вместо 4xx, а `code:0` не типизирует ошибку на клиенте. Это не «сервер лежит» и не необработанное исключение — дефект узкий: слой `level → HTTP-код` + отсутствие спецификации кода. 500 получен с нашего домена `api.chatplace.io` (не от провайдера). Путь не сломан (фронт показал message из тела), но нарушены контракт, DoD (5xx в UI) и типизация ошибок; UX-неточность копии («повторите позже») — следствие `code:0`. Три витка RCA, каждый уточнён по данным тела ответа.
-- **OBS-01 [Trivial].** Варнинги платёжного SDK (`saveCard/debug/sbpSupport`) + deprecated `allowpaymentrequest` в консоли на оплате → часть платёжных опций может не применяться. **Нарушает Definition of Done** («нет console errors на UI»). Зафиксировано текстовым дампом (см. `evidence/`).
+## 6. Defects found
+Detailed RCA is available in the registry.
 
-## 7. Решение о релизе — NO-GO
-Релиз **блокирован**: BUG-01 на платном онбординге не даёт пользователю активировать купленную функцию штатным путём — прямой риск оттока и тикетов в поддержку на самой дорогой точке воронки. **Условия для Go:** BUG-01 закрыт и верифицирован (привязанный канал возвращается, онбординг проходится до конца); нет открытых Critical/High; на платных экранах выполнен DoD (чистая консоль, корректный платёжный SDK, decline оплаты возвращает 4xx). Аспекты вне нашей зоны (доступность Telegram API, decline со стороны провайдера, внешняя аналитика) релиз не блокируют, но требуют мониторинга.
+- **BUG-01 [Critical].** Onboarding cannot be completed: `200 OK` + `{type:"result", data:[]}` is returned for a valid bot administrator; the UI blocks the step without feedback. RCA through 5 Whys: the “dead sync service” hypothesis was **disproved by action** — the container was running and the bot was reachable, while the defect still reproduced. The failure point therefore shifted toward the API↔UI contract / missing database binding: the backend was not reflecting the real Telegram administrator state.
+- **BUG-02 [Medium].** No visible mechanism exists to replace/remove the token after binding, leaving a user stuck after entering an incorrect token.
+- **BUG-03 [High].** Payment decline: the business layer handled the decline correctly — response body `{type:"error", data:{code:0, message:…, level:"business"}}` identified the business decline and produced a message — but HTTP mapping returned `500` instead of 4xx, while `code:0` did not provide a useful typed error to the client. This was not “the server is down” and not an unhandled exception; the defect was narrower: `level → HTTP status` mapping plus missing error-code specification. The 500 came from our `api.chatplace.io` domain, not from the provider. The flow itself was not completely broken because the frontend displayed the body message, but the contract and DoD were violated and error typing was lost. The misleading “try again later” copy was a consequence of `code:0`. RCA was refined through three iterations as more response details became available.
+- **OBS-01 [Trivial].** Payment SDK warnings such as `saveCard/debug/sbpSupport` plus deprecated `allowpaymentrequest` appeared in the payment console, so some payment options may not be applied. This **violates the Definition of Done** requirement for a clean console. A text dump is stored in `evidence/`.
 
-**Калибровка severity по UX-исходу, а не по домену:** на оплате фронт спасает decline fallback-ом (BUG-03 = High), тогда как на онбординге при пустом ответе фронт молчит без сообщения (BUG-01 = Critical). NO-GO несёт именно BUG-01 — онбординг реально заблокирован; BUG-03 усиливает решение (второй дефект на платном контуре + нарушение DoD), но не является единственной причиной блока.
+## 7. Release decision — NO-GO
+The release is **blocked** because `BUG-01` prevents users from activating a purchased feature through the normal paid-onboarding path. This creates direct churn and support risk at the most expensive point in the funnel.
+
+**Conditions for Go:** `BUG-01` is fixed and verified, the bound channel is returned correctly, onboarding completes end to end, no Critical/High defects remain open, and paid screens satisfy the DoD with a clean console, correctly configured payment SDK, and payment declines returning 4xx.
+
+External conditions outside our control, such as Telegram API availability, provider-side decline, and third-party analytics, do not block release by themselves but should be monitored.
+
+**Severity is calibrated by UX outcome rather than domain:** the frontend successfully falls back to a readable decline message for payment, so `BUG-03 = High`; onboarding remains silent and blocks progress on an empty response, so `BUG-01 = Critical`. The NO-GO decision is primarily caused by `BUG-01`; `BUG-03` strengthens the decision because it is a second defect in the paid flow and violates the DoD, but it is not the sole release blocker.
