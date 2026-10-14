@@ -1,7 +1,6 @@
-# QA Test Assignment · ChatPlace · “Keyword Chatbot” (Telegram)
+# ChatPlace Keyword Chatbot — QA Release Assessment
 
-**Candidate:** Vsevolod Samoylov · **Position:** QA Engineer · **Date:** 30.07.2026  
-**AI used during preparation:** Qwen for structure and wording; scope, prioritization, Risk Matrix, and Go/No-Go decisions were my own.
+Release-readiness QA assessment of a commercial Telegram automation product: paid onboarding, bot/channel binding, trigger configuration, content delivery, API contracts, and failure handling.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Telegram-Bot_API-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram">
@@ -10,47 +9,113 @@
   <img src="https://img.shields.io/badge/Chrome_DevTools-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome DevTools">
 </p>
 
-| Product risk | QA approach | Decision |
+| Product risk | QA approach | Release decision |
 |---|---|---|
 | Paid Telegram-bot onboarding and content delivery | AC traceability, API checks, risk matrix, defect evidence and RCA hypotheses | **NO-GO** because the paid onboarding path is blocked |
 
 **Start here:** [test report](docs/TEST_REPORT.md) · [test matrix](test-artifacts/TEST_MATRIX.md) · [evidence index](evidence/README.md)
 
-## What I tested
-The paid flow for creating a keyword-triggered Telegram chatbot:
-paywall → token input → bot-admin channel binding → trigger setup → content delivery.
+## Scope
 
-Testing was performed from a release-gatekeeper perspective. The goal was not to click through a happy path, but to make an evidence-based production-readiness decision.
+The assessed flow covers creation of a keyword-triggered Telegram chatbot:
 
-## How to read the repository
-| File / folder | Purpose | Recommended order |
-|---|---|---|
-| `docs/TEST_REPORT.md` | Narrative report + Go/No-Go release decision | first |
-| `test-artifacts/TEST_MATRIX.md` | Registry of AC, cases, defects, observations, and risks | data and traceability |
-| `api/*.postman_collection.json` | Contract checks for ChatPlace API + Telegram Bot API | artifact package |
-| `evidence/` | Supporting screenshots and evidence legend (`evidence/README.md`) | defect attachments |
+```text
+paywall
+  ↓
+bot token
+  ↓
+channel/admin binding
+  ↓
+trigger configuration
+  ↓
+content delivery
+```
 
-## `TEST_MATRIX.md` sections
-1. `AC_Traceability` — acceptance criteria ↔ test cases.
-2. `Test_Cases` — checklist with Pass / Fail / Blocked statuses.
-3. `Defect_Register` — bug reports with severity, steps, RCA hypothesis, and evidence.
-4. `Observations` — technical debt and non-critical findings.
-5. `Risk_Matrix` — probability × impact for each AC, used for risk-based prioritization.
+The objective was to make an evidence-based release decision rather than only validate the happy path.
 
-## Traceability
-AC ↔ Test_Cases ↔ Defect_Register ↔ Risk_Matrix ↔ evidence are connected by IDs (`AC-xx`, `TC-xx`, `BUG-xx` / `OBS-xx`). This provides end-to-end traceability from requirement to evidence, similar to a TMS workflow in Allure TestOps or Zephyr.
+## QA surface
 
-## Release status
-**NO-GO.** Blocking defect `BUG-01` affects paid onboarding: `GET /telegram-channels` returns `200 OK` with an empty array even when the bot is confirmed as a channel administrator, while the UI blocks progress without feedback. Details are in section 6 of `docs/TEST_REPORT.md`.
+- paid onboarding and entitlement-dependent flows;
+- ChatPlace API contract behavior;
+- Telegram Bot API integration boundary;
+- channel visibility/binding after bot administrator assignment;
+- keyword trigger configuration;
+- content-delivery path;
+- UI↔API state consistency;
+- blocked states and user feedback;
+- product-risk prioritization.
 
-## Approach — short version
-1. **Shift-left** — review API↔UI contracts before UI execution.
-2. **Risk-based testing** — focus on paid onboarding, the most expensive point in the funnel.
-3. **Runtime validation** — verify the “keyword → content delivery” behavior.
-4. **RCA** — use a 5 Whys loop: the “dead sync service” hypothesis was disproved by action, and the failure point moved to API↔UI contract / database binding.
-5. **Responsibility boundaries** — separate what belongs to ChatPlace from Telegram Bot API and user-side dependencies.
+## Release result
 
-> Execution of steps 2–3 on the environment was **blocked** by `BUG-01`. The related cases were still designed from product requirements and correctly marked *Blocked*, not *Not done*: test design does not depend on environment availability.
+**NO-GO.**
 
-## Tools
-Postman · Swagger/OpenAPI · DevTools (Network/Console) · Charles Proxy · Kibana · Telegram + @BotFather · Jira · Allure TestOps · GitLab CI.
+The main blocking finding affects paid onboarding: `GET /telegram-channels` returns `200 OK` with an empty array even when the bot is confirmed as a channel administrator, while the UI cannot proceed and provides no useful recovery feedback.
+
+The blocker prevents execution of later runtime steps on the same environment. Those scenarios remain designed and traceable but are correctly marked **Blocked** rather than silently reported as passed or omitted.
+
+## Traceability model
+
+The documentation links requirements, execution and risk by stable IDs:
+
+```text
+Acceptance Criteria
+      ↓
+Test Cases
+      ↓
+Defect Register
+      ↓
+Risk Matrix
+      ↓
+Evidence
+```
+
+Artifacts use `AC-xx`, `TC-xx`, `BUG-xx` and `OBS-xx` identifiers so a requirement can be followed through to its execution result and supporting evidence.
+
+## Repository map
+
+| Path | Purpose |
+|---|---|
+| `docs/TEST_REPORT.md` | narrative assessment and Go/No-Go decision |
+| `test-artifacts/TEST_MATRIX.md` | AC traceability, test cases, defects, observations and risks |
+| `api/*.postman_collection.json` | ChatPlace and Telegram API checks |
+| `evidence/` | supporting screenshots and evidence legend |
+
+## QA approach
+
+### Shift-left contract review
+
+UI behavior was compared with API contracts before treating frontend symptoms as isolated UI defects.
+
+### Risk-based testing
+
+The paid onboarding path was prioritized because failure there blocks activation and creates direct funnel/business impact.
+
+### Runtime validation
+
+The intended business path was evaluated as a state transition rather than a set of unrelated screens.
+
+### RCA discipline
+
+Hypotheses were updated as evidence changed. A suspected sync-service failure was not presented as root cause after additional checks moved the likely failure boundary toward API/UI binding and persisted channel state.
+
+### Responsibility boundaries
+
+Findings distinguish ChatPlace behavior from Telegram Bot API dependencies and user-side configuration.
+
+## Test matrix structure
+
+`TEST_MATRIX.md` contains:
+
+1. **AC_Traceability** — requirement ↔ test mapping;
+2. **Test_Cases** — Pass / Fail / Blocked execution state;
+3. **Defect_Register** — severity, reproduction, evidence and RCA hypothesis;
+4. **Observations** — non-blocking technical/product findings;
+5. **Risk_Matrix** — probability × impact prioritization.
+
+## Tooling
+
+**Postman · Swagger/OpenAPI · Chrome DevTools Network/Console · Charles Proxy · Telegram / BotFather · Jira-style defect reporting · risk-based release analysis**
+
+## Publication note
+
+This repository documents QA work against a real commercial product. It is presented as a technical QA case and does not claim a paid client engagement where that is not documented.
