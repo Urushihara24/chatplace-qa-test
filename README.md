@@ -119,3 +119,9 @@ Findings distinguish ChatPlace behavior from Telegram Bot API dependencies and u
 ## Publication note
 
 This repository documents QA work against a real commercial product. It is presented as a technical QA case and does not claim a paid client engagement where that is not documented.
+
+---
+
+## More QA & engineering work
+
+[🌐 Portfolio](https://vsevolodqa.ru/) · [💬 Telegram](https://t.me/vsevolod_qa) · [GitHub profile](https://github.com/Urushihara24)
